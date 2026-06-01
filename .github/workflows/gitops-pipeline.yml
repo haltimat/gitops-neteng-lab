@@ -1,40 +1,3 @@
-name: GitOps Network Pipeline
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-env:
-  CML_URL: ${{ secrets.CML_URL }}
-  CML_USERNAME: ${{ secrets.CML_USERNAME }}
-  CML_PASSWORD: ${{ secrets.CML_PASSWORD }}
-  CML_LAB_ID: ${{ secrets.CML_LAB_ID }}
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Run validation script
-        run: ./scripts/validate_configs.sh
-
-  package:
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Create package artifact
-        run: ./scripts/package_artifacts.sh
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: network-configs
-          path: artifacts/configs.tar.gz
-
   deploy:
     needs: package
     runs-on: ubuntu-latest
@@ -57,7 +20,7 @@ jobs:
           url: '${{ env.CML_URL }}/api/v0/authenticate'
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"username" :"${{ env.CML_USERNAME }}", "password":"${{ env.CML_PASSWORD }}"}'
+          data: '{"username":"${{ env.CML_USERNAME }}","password":"${{ env.CML_PASSWORD }}"}'
       - name: Normalize CML token
         id: cml_token
         run: |
@@ -99,7 +62,7 @@ jobs:
         id: r1_payload
         run: |
           json=$(jq -c -Rs '{configuration: .}' configs/router1.cfg)
-          echo "json=$json" >> "$GITHUB_OUTPUT"   
+          echo "json=$json" >> "$GITHUB_OUTPUT"
       - name: Update R1 configuration
         uses: fjogeleit/http-request-action@v1.16.5
         with:
@@ -107,7 +70,7 @@ jobs:
           method: 'PATCH'
           bearerToken: ${{ steps.cml_token.outputs.token }}
           customHeaders: '{"Content-Type": "application/json"}'
-          data: ${{ steps.r1_payload.outputs.json }}            
+          data: ${{ steps.r1_payload.outputs.json }}
       - name: Build R2 configuration payload
         id: r2_payload
         run: |
